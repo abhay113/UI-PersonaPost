@@ -10,16 +10,47 @@ import {
   Tab,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const AuthComponent: React.FC = () => {
   const [tab, setTab] = useState(0); // 0: Login, 1: Signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleAuth = () => {
-    if (email && password) {
+  const handleAuth = async () => {
+    if (!email || !password || (tab === 1 && !fullName)) return;
+
+    const endpoint = tab === 0 ? '/api/login' : '/api/register';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          tab === 0 ? { email, password } : { fullName, email, password }
+        ),
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Something went wrong');
+      }
+
+      const data = await res.json();
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+
       login();
+
+      navigate(tab === 0 ? '/chat' : '/onboard');
+    } catch (error: any) {
+      alert(error.message || 'Auth failed');
     }
   };
 
@@ -41,12 +72,11 @@ const AuthComponent: React.FC = () => {
           sx={{
             p: 4,
             borderRadius: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.77)', // translucent white
-            backdropFilter: 'blur(12px)',                // strong blur effect
-            border: '1px solid rgba(255, 255, 255, 0.49)', // optional soft border
+            backgroundColor: 'rgba(255, 255, 255, 0.77)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.49)',
           }}
         >
-
           <Typography
             variant="h4"
             align="center"
@@ -67,6 +97,17 @@ const AuthComponent: React.FC = () => {
           </Tabs>
 
           <Box component="form" noValidate autoComplete="off">
+            {tab === 1 && (
+              <TextField
+                fullWidth
+                label="Full Name"
+                margin="normal"
+                variant="outlined"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            )}
+
             <TextField
               fullWidth
               label="Email"
@@ -75,6 +116,7 @@ const AuthComponent: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+
             <TextField
               fullWidth
               label="Password"
