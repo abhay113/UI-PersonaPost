@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import axios from 'axios';
+import type { AlertColor } from '@mui/material';
 import {
   Container,
   Box,
@@ -8,51 +10,95 @@ import {
   Paper,
   Tabs,
   Tab,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+type AlertState = {
+  message: string;
+  severity: AlertColor;
+};
 
 const AuthComponent: React.FC = () => {
   const [tab, setTab] = useState(0); // 0: Login, 1: Signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [full_name, setFullName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState<AlertState | null>(null);
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleAuth = async () => {
-    if (!email || !password || (tab === 1 && !fullName)) return;
+  const handleCloseAlert = () => setAlert(null);
 
-    const endpoint = tab === 0 ? '/api/login' : '/api/register';
+  const handleAuth = async () => {
+    if (!email || !password || (tab === 1 && !full_name)) {
+      setAlert({ message: 'Please fill in all required fields.', severity: 'warning' });
+      return;
+    }
+
+    const baseUrl = 'http://localhost:3010/api/onboard';
+    const endpoint = tab === 0 ? `${baseUrl}/login` : `${baseUrl}/signup`;
+
+    const payload = tab === 0
+      ? { email, password }
+      : { email, password, full_name };
 
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          tab === 0 ? { email, password } : { fullName, email, password }
-        ),
-        credentials: 'include',
+      setLoading(true);
+
+      const { data } = await axios.post(endpoint, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        withCredentials: true,
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Something went wrong');
+      if (data?.error) {
+        setAlert({ message: data.error, severity: 'error' });
+        return;
       }
 
-      const data = await res.json();
-
-      if (data.token) {
+      if (data) {
         localStorage.setItem('token', data.token);
       }
 
-      login();
+      if (data?.full_name) {
+        sessionStorage.setItem('full_name', data.full_name);
+        sessionStorage.setItem('isAuthenticated', 'true');
+      }
 
-      navigate(tab === 0 ? '/chat' : '/onboard');
+      setAlert({
+        message: tab === 0 ? 'Login successful!' : 'Registration successful!',
+        severity: 'success',
+      });
+
+      login(); // ✅ Context auth
+      setTimeout(() => {
+        navigate(tab === 0 ? '/chat' : '/onboard');
+      }, 1000); // Slight delay for user to see alert
     } catch (error: any) {
-      alert(error.message || 'Auth failed');
+      const message =
+        error.response?.data?.message || error.message || 'Something went wrong';
+      setAlert({ message, severity: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
+  const alertContent = alert ? (
+    <Alert
+      onClose={handleCloseAlert}
+      severity={alert.severity}
+      variant="filled"
+      sx={{ width: '100%' }}
+    >
+      {alert.message}
+    </Alert>
+  ) : undefined;
 
   return (
     <Box
@@ -103,7 +149,7 @@ const AuthComponent: React.FC = () => {
                 label="Full Name"
                 margin="normal"
                 variant="outlined"
-                value={fullName}
+                value={full_name}
                 onChange={(e) => setFullName(e.target.value)}
               />
             )}
@@ -133,12 +179,23 @@ const AuthComponent: React.FC = () => {
               color="primary"
               sx={{ mt: 3, py: 1.5 }}
               onClick={handleAuth}
+              disabled={loading}
             >
-              {tab === 0 ? 'Login' : 'Sign Up'}
+              {loading ? 'Processing...' : tab === 0 ? 'Login' : 'Sign Up'}
             </Button>
           </Box>
         </Paper>
       </Container>
+
+      {/* Snackbar Alert */}
+      <Snackbar
+        open={Boolean(alert)}
+        autoHideDuration={4000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        {alertContent}
+      </Snackbar>
     </Box>
   );
 };

@@ -5,6 +5,7 @@ interface AuthContextType {
     isOnboarded: boolean;
     login: () => void;
     completeOnboarding: () => void;
+    loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -12,17 +13,20 @@ export const AuthContext = createContext<AuthContextType>({
     isOnboarded: false,
     login: () => { },
     completeOnboarding: () => { },
+    loading: true,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isOnboarded, setIsOnboarded] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const auth = localStorage.getItem('isAuthenticated') === 'true';
         const onboard = localStorage.getItem('isOnboarded') === 'true';
         setIsAuthenticated(auth);
         setIsOnboarded(onboard);
+        setLoading(false); // Done loading once state is set
     }, []);
 
     const login = () => {
@@ -36,11 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isOnboarded, login, completeOnboarding }}>
+        <AuthContext.Provider value={{ isAuthenticated, isOnboarded, login, completeOnboarding, loading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Optional helper
 export const useAuth = () => useContext(AuthContext);

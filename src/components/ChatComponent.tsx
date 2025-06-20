@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
     AppBar, Avatar, Box, Container, IconButton, Menu, MenuItem,
-    Paper, Stack, TextField, Toolbar, Typography
+    Paper, Stack, TextField, Toolbar, Typography, Snackbar, Alert
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -25,9 +25,10 @@ const ChatComponent: React.FC = () => {
     const [input, setInput] = useState('');
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [isTyping, setIsTyping] = useState(false);
+    const [alert, setAlert] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
+
     const bottomRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
-
     const userName = 'John Doe';
 
     // Scroll to bottom when messages change
@@ -75,15 +76,20 @@ const ChatComponent: React.FC = () => {
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
     };
+    const handleCloseAlert = () => setAlert(null);
 
     const handleMenuClose = (action?: 'logout' | 'profile') => {
         setAnchorEl(null);
         if (action === 'logout') {
+            localStorage.removeItem('token');
+            sessionStorage.removeItem('full_name');
             localStorage.removeItem('chatMessages');
+            localStorage.removeItem('isAuthenticated');
             setMessages([]);
-            navigate('/');
+            setAlert({ message: 'Logged out successfully', severity: 'success' });
+            navigate('/auth');
         } else if (action === 'profile') {
-            alert('View profile clicked');
+            setAlert({ message: 'Profile View Clicked', severity: 'success' });
         }
     };
 
@@ -212,6 +218,23 @@ const ChatComponent: React.FC = () => {
                     </Box>
                 </Paper>
             </Container>
+            {alert && (
+                <Snackbar
+                    open={Boolean(alert)}
+                    autoHideDuration={4000}
+                    onClose={handleCloseAlert}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert
+                        onClose={handleCloseAlert}
+                        severity={alert.severity}
+                        variant="filled"
+                        sx={{ width: '100%' }}
+                    >
+                        {alert.message}
+                    </Alert>
+                </Snackbar>
+            )}
         </Box>
     );
 };

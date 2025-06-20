@@ -1,24 +1,33 @@
-import React, { type JSX } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AuthPage from '../components/AuthComponent';
+import ChatComponent from '../components/ChatComponent';
+import OnboardComponent from '../components/OnboardComponent';
+import ProtectedRoute from '../components/ProtectedRoute.tsx';
 
-interface ProtectedRouteProps {
-    children: JSX.Element;
-    requireOnboarding?: boolean;
-}
+<Routes>
+    {/* Public Route */}
+    <Route path="/auth" element={<AuthPage />} />
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireOnboarding = true }) => {
-    const { isAuthenticated, isOnboarded } = useAuth();
+    {/* Private Route - only if authenticated AND onboarded */}
+    <Route
+        path="/chat"
+        element={
+            <ProtectedRoute>
+                <ChatComponent />
+            </ProtectedRoute>
+        }
+    />
 
-    if (!isAuthenticated) {
-        return <Navigate to="/auth" />;
-    }
+    {/* Onboarding Route - only if authenticated AND NOT onboarded */}
+    <Route
+        path="/onboard"
+        element={
+            <ProtectedRoute requireOnboarding={false}>
+                <OnboardComponent />
+            </ProtectedRoute>
+        }
+    />
 
-    if (requireOnboarding && !isOnboarded) {
-        return <Navigate to="/onboard" />;
-    }
-
-    return children;
-};
-
-export default ProtectedRoute;
+    {/* Default: redirect unknown routes to /auth */}
+    <Route path="*" element={<Navigate to="/auth" />} />
+</Routes>

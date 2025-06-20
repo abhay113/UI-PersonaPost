@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { AlertColor } from '@mui/material';
 import {
     Box,
     Button,
@@ -11,16 +12,15 @@ import {
     Typography,
     Stack,
     Paper,
-} from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+    Snackbar,
+    Alert,
 
-const steps = [
-    'Profession',
-    'Hobbies',
-    'Interests',
-    'Themes',
-];
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import axios from 'axios';
+
+const steps = ['Profession', 'Hobbies', 'Interests', 'Themes'];
 
 const transitionVariants = {
     initial: { opacity: 0, y: 20 },
@@ -28,10 +28,14 @@ const transitionVariants = {
     exit: { opacity: 0, y: -20 },
 };
 
+type AlertState = {
+    message: string;
+    severity: AlertColor;
+};
+
 const OnboardComponent: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const fullName = (location.state as any)?.fullName || 'User';
+    const fullName = sessionStorage.getItem('full_name') || 'User';
 
     const [activeStep, setActiveStep] = useState(0);
     const [profession, setProfession] = useState('');
@@ -39,6 +43,9 @@ const OnboardComponent: React.FC = () => {
     const [interests, setInterests] = useState<string[]>([]);
     const [themes, setThemes] = useState<string[]>([]);
     const [input, setInput] = useState('');
+    const [alert, setAlert] = useState<AlertState | null>(null);
+
+    const handleCloseAlert = () => setAlert(null);
 
     const handleNext = () => setActiveStep((prev) => prev + 1);
     const handleBack = () => setActiveStep((prev) => prev - 1);
@@ -53,13 +60,13 @@ const OnboardComponent: React.FC = () => {
     const handleDelete = (
         index: number,
         setter: React.Dispatch<React.SetStateAction<string[]>>,
-        list: string[],
+        list: string[]
     ) => {
         setter(list.filter((_, i) => i !== index));
     };
 
     const handleSubmit = async () => {
-        const data = {
+        const payload = {
             name: fullName,
             profession,
             hobbies,
@@ -68,22 +75,27 @@ const OnboardComponent: React.FC = () => {
         };
 
         try {
-            await fetch('http://localhost:3010/onboard', {
-                method: 'POST',
+            await axios.post('http://localhost:3010/onboard/', payload, {
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(data),
+                withCredentials: true,
             });
-            navigate('/chat');
-        } catch (err) {
-            alert('Submission failed.');
+
+            setAlert({ message: 'Onboarding complete! Redirecting...', severity: 'success' });
+
+            setTimeout(() => {
+                navigate('/chat');
+            }, 1200);
+        } catch (error: any) {
+            const message =
+                error.response?.data?.message || error.message || 'Submission failed.';
+            setAlert({ message, severity: 'error' });
         }
     };
 
     const renderChipInput = (
         label: string,
         list: string[],
-        setter: React.Dispatch<React.SetStateAction<string[]>>,
+        setter: React.Dispatch<React.SetStateAction<string[]>>
     ) => (
         <>
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', mb: 2 }}>
@@ -170,7 +182,7 @@ const OnboardComponent: React.FC = () => {
                     <Typography variant="h4" align="center" color="primary" gutterBottom>
                         PersonaPost Onboarding
                     </Typography>
-                    <br /><br />
+                    <br />
                     <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
                         {steps.map((label) => (
                             <Step key={label}>
@@ -223,6 +235,25 @@ const OnboardComponent: React.FC = () => {
                     </Box>
                 </Paper>
             </Container>
+
+            {/* Snackbar Alert */}
+            {alert && (
+                <Snackbar
+                    open={Boolean(alert)}
+                    autoHideDuration={4000}
+                    onClose={handleCloseAlert}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert
+                        onClose={handleCloseAlert}
+                        severity={alert.severity}
+                        variant="filled"
+                        sx={{ width: '100%' }}
+                    >
+                        {alert.message}
+                    </Alert>
+                </Snackbar>
+            )}
         </Box>
     );
 };
