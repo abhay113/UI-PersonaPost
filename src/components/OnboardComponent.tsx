@@ -79,11 +79,12 @@ const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess })
         }
 
         const payload = {
-            name: fullName,
+            session_id : localStorage.getItem('session_id'),
+            // name: fullName,
             profession,
             hobbies,
             interests,
-            themes,
+            "preferred_themes": themes,
         };
 
         try {

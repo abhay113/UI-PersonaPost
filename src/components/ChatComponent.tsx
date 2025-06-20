@@ -3,21 +3,24 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {
     AppBar, Avatar, Box, Container, IconButton, Menu, MenuItem,
-    Paper, Stack, TextField, Toolbar, Typography, Snackbar, Alert
+    Paper, Stack, TextField, Toolbar, Typography, Snackbar, Alert, Button
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
+import ImageIcon from '@mui/icons-material/Image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { useNavigate } from 'react-router-dom';
 import { TypingIndicator } from './TypingIndicator';
+import ImageModal from './ImageModal'; // Import the new ImageModal component
 
 interface Message {
     text: string;
     sender: 'user' | 'bot';
+    imageUrl?: string | null; // Add imageUrl to message interface
 }
 
 const ChatComponent: React.FC = () => {
@@ -36,6 +39,8 @@ const ChatComponent: React.FC = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [isTyping, setIsTyping] = useState(false);
     const [alert, setAlert] = useState<{ message: string; severity: 'success' | 'error' } | null>(null);
+    const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const userName = localStorage.getItem('full_name') || 'User';
@@ -76,19 +81,25 @@ const ChatComponent: React.FC = () => {
 
             const flowiseText = flowiseResponse.data?.text || `Sorry, I didn't understand that.`;
             let combinedText = flowiseText;
+            let generatedImageUrl = null;
 
             // If input includes "image", get image URL and append
             if (question.toLowerCase().includes('image')) {
                 const imageUrl = await handleImageGeneration(question);
                 if (imageUrl) {
-                    combinedText += `\n\n**🖼️ Generated Image :** ${imageUrl}`;
+                    generatedImageUrl = imageUrl;
+                    combinedText += `\n\n**🖼️ Image generated successfully!**`;
                 } else {
                     combinedText += `\n\n🚫 Failed to generate image.`;
                 }
             }
 
             await new Promise((resolve) => setTimeout(resolve, 500));
-            const botMsg: Message = { text: combinedText, sender: 'bot' };
+            const botMsg: Message = {
+                text: combinedText,
+                sender: 'bot',
+                imageUrl: generatedImageUrl  // Store the image URL in the message
+            };
             setMessages((prev) => [...prev, botMsg]);
         } catch (error) {
             console.error('Flowise bot error:', error);
@@ -125,6 +136,12 @@ const ChatComponent: React.FC = () => {
             console.error('Image generation error:', error);
             return null;
         }
+    };
+
+    // Function to handle clicking the image button in chat
+    const handleImageClick = (imageUrl: string) => {
+        setImageModalUrl(imageUrl);
+        setIsImageModalOpen(true);
     };
 
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -276,6 +293,30 @@ const ChatComponent: React.FC = () => {
                                         remarkPlugins={[remarkGfm]}
                                         children={DOMPurify.sanitize(msg.text)}
                                     />
+
+                                    {/* Add clickable image button if message has imageUrl */}
+                                    {msg.imageUrl && (
+                                        <Box mt={1}>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<ImageIcon />}
+                                                onClick={() => handleImageClick(msg.imageUrl!)}
+                                                sx={{
+                                                    fontSize: '0.75rem',
+                                                    textTransform: 'none',
+                                                    borderColor: msg.sender === 'user' ? '#fff' : 'primary.main',
+                                                    color: msg.sender === 'user' ? '#fff' : 'primary.main',
+                                                    '&:hover': {
+                                                        borderColor: msg.sender === 'user' ? '#fff' : 'primary.dark',
+                                                        bgcolor: msg.sender === 'user' ? 'rgba(255,255,255,0.1)' : 'rgba(25,118,210,0.04)',
+                                                    }
+                                                }}
+                                            >
+                                                View Generated Image
+                                            </Button>
+                                        </Box>
+                                    )}
                                 </Paper>
                             </Box>
                         ))}
@@ -348,6 +389,13 @@ const ChatComponent: React.FC = () => {
                     </Alert>
                 </Snackbar>
             )}
+
+            {/* Image Modal Component */}
+            <ImageModal
+                isOpen={isImageModalOpen}
+                imageUrl={imageModalUrl || ''} // Pass the URL to the modal
+                onClose={() => setIsImageModalOpen(false)}
+            />
         </Box>
     );
 };
