@@ -69,6 +69,7 @@ const AuthComponent: React.FC<AuthComponentProps> = ({ onAuthSuccess }) => {
       }
 
       localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('session_id', data.session_id);
 
       // For login: user is already onboarded
       // For signup: user needs to complete onboarding

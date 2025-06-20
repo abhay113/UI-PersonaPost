@@ -1,5 +1,6 @@
 // components/ChatComponent.tsx
 import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 import {
     AppBar, Avatar, Box, Container, IconButton, Menu, MenuItem,
     Paper, Stack, TextField, Toolbar, Typography, Snackbar, Alert
@@ -54,43 +55,75 @@ const ChatComponent: React.FC = () => {
     const handleSend = async () => {
         if (!input.trim()) return;
 
-        const userMsg: Message = { text: input, sender: 'user' };
+        const question = input;
+        const userMsg: Message = { text: question, sender: 'user' };
         setMessages((prev) => [...prev, userMsg]);
 
-        const question = input;
         setInput('');
         setIsTyping(true);
 
         try {
-            const res = await fetch('http://localhost:3000/api/v1/prediction/71cc8ea2-c145-4032-80e5-51ef3bf3fb82', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}` // Include token if needed
-                },
-                body: JSON.stringify({ question }),
-            });
+            const flowiseResponse = await axios.post(
+                'http://localhost:3000/api/v1/prediction/71cc8ea2-c145-4032-80e5-51ef3bf3fb82',
+                { question },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    },
+                }
+            );
 
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
+            const flowiseText = flowiseResponse.data?.text || `Sorry, I didn't understand that.`;
+            let combinedText = flowiseText;
+
+            // If input includes "image", get image URL and append
+            if (question.toLowerCase().includes('image')) {
+                const imageUrl = await handleImageGeneration(question);
+                if (imageUrl) {
+                    combinedText += `\n\n**🖼️ Generated Image :** ${imageUrl}`;
+                } else {
+                    combinedText += `\n\n🚫 Failed to generate image.`;
+                }
             }
 
-            const data = await res.json();
-            const botReply = data?.text || `Sorry, I didn't understand that.`;
-
-            // Add a small delay for better UX
             await new Promise((resolve) => setTimeout(resolve, 500));
-
-            const botMsg: Message = { text: botReply, sender: 'bot' };
+            const botMsg: Message = { text: combinedText, sender: 'bot' };
             setMessages((prev) => [...prev, botMsg]);
         } catch (error) {
             console.error('Flowise bot error:', error);
             setMessages((prev) => [...prev, {
                 text: 'Sorry, I\'m having trouble connecting right now. Please try again later.',
-                sender: 'bot'
+                sender: 'bot',
             }]);
         } finally {
             setIsTyping(false);
+        }
+    };
+
+    const handleImageGeneration = async (question: string): Promise<string | null> => {
+        try {
+            const session_id = localStorage.getItem('session_id');
+
+            const response = await axios.post(
+                'http://localhost:3010/api/chatbot/generate',
+                {
+                    session_id,
+                    input: question,
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    },
+                }
+            );
+
+            const imageUrl = response.data?.image_url;
+            return imageUrl || null;
+        } catch (error) {
+            console.error('Image generation error:', error);
+            return null;
         }
     };
 
