@@ -1,3 +1,4 @@
+// components/OnboardComponent.tsx
 import React, { useState } from 'react';
 import type { AlertColor } from '@mui/material';
 import {
@@ -14,7 +15,6 @@ import {
     Paper,
     Snackbar,
     Alert,
-
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -33,9 +33,15 @@ type AlertState = {
     severity: AlertColor;
 };
 
-const OnboardComponent: React.FC = () => {
+interface OnboardComponentProps {
+    onOnboardSuccess: () => void;
+}
+
+const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess }) => {
     const navigate = useNavigate();
-    const fullName = sessionStorage.getItem('full_name') || 'User';
+
+    // Get full name from localStorage instead of sessionStorage
+    const fullName = localStorage.getItem('full_name') || 'User';
 
     const [activeStep, setActiveStep] = useState(0);
     const [profession, setProfession] = useState('');
@@ -44,6 +50,7 @@ const OnboardComponent: React.FC = () => {
     const [themes, setThemes] = useState<string[]>([]);
     const [input, setInput] = useState('');
     const [alert, setAlert] = useState<AlertState | null>(null);
+    const [loading, setLoading] = useState(false);
 
     const handleCloseAlert = () => setAlert(null);
 
@@ -66,6 +73,11 @@ const OnboardComponent: React.FC = () => {
     };
 
     const handleSubmit = async () => {
+        if (themes.length === 0) {
+            setAlert({ message: 'Please add at least one theme to continue.', severity: 'warning' });
+            return;
+        }
+
         const payload = {
             name: fullName,
             profession,
@@ -75,20 +87,34 @@ const OnboardComponent: React.FC = () => {
         };
 
         try {
-            await axios.post('http://localhost:3010/onboard/', payload, {
-                headers: { 'Content-Type': 'application/json' },
+            setLoading(true);
+
+            await axios.post('http://localhost:3010/api/onboard/', payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}` // Include token if needed
+                },
                 withCredentials: true,
             });
 
+            // Mark user as onboarded
+            localStorage.setItem('isOnboarded', 'true');
+
             setAlert({ message: 'Onboarding complete! Redirecting...', severity: 'success' });
+
+            // Update parent component state
+            onOnboardSuccess();
 
             setTimeout(() => {
                 navigate('/chat');
             }, 1200);
+
         } catch (error: any) {
             const message =
                 error.response?.data?.message || error.message || 'Submission failed.';
             setAlert({ message, severity: 'error' });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -105,6 +131,7 @@ const OnboardComponent: React.FC = () => {
                         label={item}
                         onDelete={() => handleDelete(index, setter, list)}
                         color="primary"
+                        sx={{ mb: 1 }}
                     />
                 ))}
             </Stack>
@@ -113,10 +140,21 @@ const OnboardComponent: React.FC = () => {
                 label={label}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdd(setter)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAdd(setter);
+                    }
+                }}
                 margin="normal"
             />
-            <Button onClick={() => handleAdd(setter)}>Add</Button>
+            <Button
+                onClick={() => handleAdd(setter)}
+                variant="outlined"
+                sx={{ mt: 1 }}
+            >
+                Add
+            </Button>
         </>
     );
 
@@ -134,6 +172,7 @@ const OnboardComponent: React.FC = () => {
                             value={profession}
                             onChange={(e) => setProfession(e.target.value)}
                             margin="normal"
+                            placeholder="e.g., Software Developer, Teacher, Designer"
                         />
                     </Box>
                 );
@@ -141,7 +180,7 @@ const OnboardComponent: React.FC = () => {
                 return (
                     <>
                         <Typography variant="h6" gutterBottom>
-                            That’s great! Now enter your hobbies
+                            That's great! Now enter your hobbies
                         </Typography>
                         {renderChipInput('Add a hobby', hobbies, setHobbies)}
                     </>
@@ -207,7 +246,11 @@ const OnboardComponent: React.FC = () => {
                     </Box>
 
                     <Box mt={4} display="flex" justifyContent="space-between">
-                        <Button disabled={activeStep === 0} onClick={handleBack}>
+                        <Button
+                            disabled={activeStep === 0}
+                            onClick={handleBack}
+                            variant="outlined"
+                        >
                             Back
                         </Button>
                         {activeStep === steps.length - 1 ? (
@@ -215,16 +258,16 @@ const OnboardComponent: React.FC = () => {
                                 variant="contained"
                                 color="primary"
                                 onClick={handleSubmit}
-                                disabled={themes.length === 0}
+                                disabled={themes.length === 0 || loading}
                             >
-                                Finish
+                                {loading ? 'Finishing...' : 'Finish'}
                             </Button>
                         ) : (
                             <Button
                                 variant="contained"
                                 onClick={handleNext}
                                 disabled={
-                                    (activeStep === 0 && !profession) ||
+                                    (activeStep === 0 && !profession.trim()) ||
                                     (activeStep === 1 && hobbies.length === 0) ||
                                     (activeStep === 2 && interests.length === 0)
                                 }

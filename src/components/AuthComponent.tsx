@@ -1,3 +1,4 @@
+// components/AuthComponent.tsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import type { AlertColor } from '@mui/material';
@@ -13,7 +14,6 @@ import {
   Snackbar,
   Alert,
 } from '@mui/material';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 type AlertState = {
@@ -21,7 +21,11 @@ type AlertState = {
   severity: AlertColor;
 };
 
-const AuthComponent: React.FC = () => {
+interface AuthComponentProps {
+  onAuthSuccess: () => void;
+}
+
+const AuthComponent: React.FC<AuthComponentProps> = ({ onAuthSuccess }) => {
   const [tab, setTab] = useState(0); // 0: Login, 1: Signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +33,7 @@ const AuthComponent: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<AlertState | null>(null);
 
-  const { login } = useAuth();
   const navigate = useNavigate();
-
   const handleCloseAlert = () => setAlert(null);
 
   const handleAuth = async () => {
@@ -42,14 +44,12 @@ const AuthComponent: React.FC = () => {
 
     const baseUrl = 'http://localhost:3010/api/onboard';
     const endpoint = tab === 0 ? `${baseUrl}/login` : `${baseUrl}/signup`;
-
     const payload = tab === 0
       ? { email, password }
       : { email, password, full_name };
 
     try {
       setLoading(true);
-
       const { data } = await axios.post(endpoint, payload, {
         headers: {
           'Content-Type': 'application/json',
@@ -63,13 +63,27 @@ const AuthComponent: React.FC = () => {
         return;
       }
 
-      if (data) {
+      // Store authentication data
+      if (data?.token) {
         localStorage.setItem('token', data.token);
       }
 
+      localStorage.setItem('isAuthenticated', 'true');
+
+      // For login: user is already onboarded
+      // For signup: user needs to complete onboarding
+      if (tab === 0) {
+        // Login - assume user is already onboarded
+        localStorage.setItem('isOnboarded', 'true');
+        localStorage.setItem('full_name', data.full_name || 'User');
+      } else {
+        // Signup - user needs onboarding
+        localStorage.setItem('isOnboarded', 'false');
+      }
+
+      // Store user info if available
       if (data?.full_name) {
-        sessionStorage.setItem('full_name', data.full_name);
-        sessionStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('full_name', data.full_name);
       }
 
       setAlert({
@@ -77,18 +91,26 @@ const AuthComponent: React.FC = () => {
         severity: 'success',
       });
 
-      login(); // ✅ Context auth
+      // Update parent component state
+      onAuthSuccess();
+
+      // Navigate after a short delay
       setTimeout(() => {
-        navigate(tab === 0 ? '/chat' : '/onboard');
-      }, 1000); // Slight delay for user to see alert
+        if (tab === 0) {
+          navigate('/chat');
+        } else {
+          navigate('/onboard');
+        }
+      }, 1000);
+
     } catch (error: any) {
-      const message =
-        error.response?.data?.message || error.message || 'Something went wrong';
+      const message = error.response?.data?.message || error.message || 'Something went wrong';
       setAlert({ message, severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
+
   const alertContent = alert ? (
     <Alert
       onClose={handleCloseAlert}
@@ -159,6 +181,7 @@ const AuthComponent: React.FC = () => {
               label="Email"
               margin="normal"
               variant="outlined"
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -187,7 +210,6 @@ const AuthComponent: React.FC = () => {
         </Paper>
       </Container>
 
-      {/* Snackbar Alert */}
       <Snackbar
         open={Boolean(alert)}
         autoHideDuration={4000}
