@@ -1,6 +1,7 @@
 // components/OnboardComponent.tsx
 import React, { useState } from 'react';
 import type { AlertColor } from '@mui/material';
+import AppAlert from './AlertComponent'
 import {
     Box,
     Button,
@@ -12,9 +13,7 @@ import {
     TextField,
     Typography,
     Stack,
-    Paper,
-    Snackbar,
-    Alert,
+    Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -79,7 +78,7 @@ const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess })
         }
 
         const payload = {
-            session_id : localStorage.getItem('session_id'),
+            session_id: localStorage.getItem('session_id'),
             // name: fullName,
             profession,
             hobbies,
@@ -215,7 +214,12 @@ const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess })
             display="flex"
             alignItems="center"
             justifyContent="center"
-            sx={{ background: 'linear-gradient(to right, #2196f3, #21cbf3)' }}
+            sx={{
+                backgroundImage: 'url(/bg.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+            }}
         >
             <Container maxWidth="md">
                 <Paper elevation={4} sx={{ p: 6, borderRadius: 3 }}>
@@ -281,23 +285,8 @@ const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess })
             </Container>
 
             {/* Snackbar Alert */}
-            {alert && (
-                <Snackbar
-                    open={Boolean(alert)}
-                    autoHideDuration={4000}
-                    onClose={handleCloseAlert}
-                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-                >
-                    <Alert
-                        onClose={handleCloseAlert}
-                        severity={alert.severity}
-                        variant="filled"
-                        sx={{ width: '100%' }}
-                    >
-                        {alert.message}
-                    </Alert>
-                </Snackbar>
-            )}
+            <AppAlert alert={alert} onClose={handleCloseAlert} />
+
         </Box>
     );
 };

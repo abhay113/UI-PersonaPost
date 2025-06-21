@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import {
     AppBar, Avatar, Box, Container, IconButton, Menu, MenuItem,
-    Paper, Stack, TextField, Toolbar, Typography, Snackbar, Alert, Button
+    Paper, Stack, TextField, Toolbar, Typography, Button
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -16,6 +16,7 @@ import DOMPurify from 'dompurify';
 import { useNavigate } from 'react-router-dom';
 import { TypingIndicator } from './TypingIndicator';
 import ImageModal from './ImageModal'; // Import the new ImageModal component
+import AppAlert from './AlertComponent';
 
 interface Message {
     text: string;
@@ -66,11 +67,19 @@ const ChatComponent: React.FC = () => {
 
         setInput('');
         setIsTyping(true);
-
+        const userSessionId = localStorage.getItem('session_id'); // Make sure this key matches what you set
+        const full_name = localStorage.getItem('full_name') || 'User'; // Get full name from localStorage
         try {
             const flowiseResponse = await axios.post(
                 'http://localhost:3000/api/v1/prediction/71cc8ea2-c145-4032-80e5-51ef3bf3fb82',
-                { question },
+                {
+                    question,
+                    overrideConfig: { // This object is essential
+                        sessionId: userSessionId,
+                        full_name: full_name// The key MUST be 'sessionId'
+
+                    }
+                },
                 {
                     headers: {
                         'Content-Type': 'application/json',
@@ -157,6 +166,7 @@ const ChatComponent: React.FC = () => {
         localStorage.removeItem('isOnboarded');
         localStorage.removeItem('full_name');
         localStorage.removeItem('chatMessages');
+        localStorage.removeItem('session_id');
         setAlert({ message: 'Logged out successfully', severity: 'success' });
 
         setTimeout(() => {
@@ -178,7 +188,18 @@ const ChatComponent: React.FC = () => {
     };
 
     return (
-        <Box display="flex" flexDirection="column" height="100vh" bgcolor="#e3f2fd">
+        <Box
+            display="flex"
+            flexDirection="column"
+            height="100vh"
+            sx={{
+                backgroundImage: 'url(/bg.jpg)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+            }}
+        >
+
             <AppBar position="static" color="primary">
                 <Toolbar sx={{ justifyContent: 'space-between' }}>
                     <Typography variant="h6" fontWeight="bold">
@@ -372,24 +393,7 @@ const ChatComponent: React.FC = () => {
                 </Paper>
             </Container>
 
-            {alert && (
-                <Snackbar
-                    open={Boolean(alert)}
-                    autoHideDuration={4000}
-                    onClose={handleCloseAlert}
-                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-                >
-                    <Alert
-                        onClose={handleCloseAlert}
-                        severity={alert.severity}
-                        variant="filled"
-                        sx={{ width: '100%' }}
-                    >
-                        {alert.message}
-                    </Alert>
-                </Snackbar>
-            )}
-
+            <AppAlert alert={alert} onClose={handleCloseAlert} />
             {/* Image Modal Component */}
             <ImageModal
                 isOpen={isImageModalOpen}

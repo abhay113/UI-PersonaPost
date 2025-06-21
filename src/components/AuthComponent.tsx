@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import type { AlertColor } from '@mui/material';
+import AppAlert from './AlertComponent'; // adjust the path if needed
+
 import {
   Container,
   Box,
@@ -10,9 +12,7 @@ import {
   Button,
   Paper,
   Tabs,
-  Tab,
-  Snackbar,
-  Alert,
+  Tab
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -112,17 +112,6 @@ const AuthComponent: React.FC<AuthComponentProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  const alertContent = alert ? (
-    <Alert
-      onClose={handleCloseAlert}
-      severity={alert.severity}
-      variant="filled"
-      sx={{ width: '100%' }}
-    >
-      {alert.message}
-    </Alert>
-  ) : undefined;
-
   return (
     <Box
       sx={{
@@ -211,14 +200,8 @@ const AuthComponent: React.FC<AuthComponentProps> = ({ onAuthSuccess }) => {
         </Paper>
       </Container>
 
-      <Snackbar
-        open={Boolean(alert)}
-        autoHideDuration={4000}
-        onClose={handleCloseAlert}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        {alertContent}
-      </Snackbar>
+      <AppAlert alert={alert} onClose={handleCloseAlert} />
+
     </Box>
   );
 };
