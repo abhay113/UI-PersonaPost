@@ -42,7 +42,8 @@ const AuthComponent: React.FC<AuthComponentProps> = ({ onAuthSuccess }) => {
       return;
     }
 
-    const baseUrl = 'http://localhost:3010/api/onboard';
+    const baseUrl = `${import.meta.env.VITE_BASE_URL_LOGIN}`;
+
     const endpoint = tab === 0 ? `${baseUrl}/login` : `${baseUrl}/signup`;
     const payload = tab === 0
       ? { email, password }

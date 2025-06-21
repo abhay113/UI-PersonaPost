@@ -85,11 +85,12 @@ const OnboardComponent: React.FC<OnboardComponentProps> = ({ onOnboardSuccess })
             interests,
             "preferred_themes": themes,
         };
+        const base_url = `${import.meta.env.VITE_BASE_URL_LOGIN}`;
 
         try {
             setLoading(true);
 
-            await axios.post('http://localhost:3010/api/onboard/', payload, {
+            await axios.post(base_url, payload, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token')}` // Include token if needed

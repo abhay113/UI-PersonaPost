@@ -69,9 +69,10 @@ const ChatComponent: React.FC = () => {
         setIsTyping(true);
         const userSessionId = localStorage.getItem('session_id'); // Make sure this key matches what you set
         const full_name = localStorage.getItem('full_name') || 'User'; // Get full name from localStorage
+        const flowise_url = `${import.meta.env.VITE_FLOWISE_URL}`;
         try {
             const flowiseResponse = await axios.post(
-                'http://localhost:3000/api/v1/prediction/71cc8ea2-c145-4032-80e5-51ef3bf3fb82',
+                flowise_url,
                 {
                     question,
                     overrideConfig: { // This object is essential
@@ -120,13 +121,13 @@ const ChatComponent: React.FC = () => {
             setIsTyping(false);
         }
     };
-
+    const generate_url = `${import.meta.env.VITE_GENERATE_URL}`;
     const handleImageGeneration = async (question: string): Promise<string | null> => {
         try {
             const session_id = localStorage.getItem('session_id');
 
             const response = await axios.post(
-                'http://localhost:3010/api/chatbot/generate',
+                generate_url,
                 {
                     session_id,
                     input: question,
